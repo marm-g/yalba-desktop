@@ -66,7 +66,7 @@ impl NewGameClient {
     ) -> Result<T, QueryError> {
         let data = self
             .client
-            .get(String::from("https://localhost:") + &self.port.to_string() + "/" + &endpoint)
+            .get(String::from("https://127.0.0.1:") + &self.port.to_string() + "/" + &endpoint)
             .basic_auth("riot", Some(&self.password))
             .send()
             .await?
@@ -76,7 +76,7 @@ impl NewGameClient {
     }
 
     pub async fn summoner_name(&self) -> Result<String, QueryError> {
-        let base_endpoint = String::from("lol-summoner/v1/current_summoner");
+        let base_endpoint = String::from("lol-summoner/v1/current-summoner");
         let summoner = self
             .get_data::<Summoner, String>(base_endpoint)
             .await
