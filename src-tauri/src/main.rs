@@ -14,8 +14,7 @@ use thiserror::Error;
 
 #[tauri::command]
 async fn summoner_name() -> String {
-    let lockfile = LeagueClientConnector::parse_lockfile().unwrap();
-    let client = NewGameClient::new(lockfile.port, lockfile.password);
+    let client = NewGameClient::new();
 
     client.summoner_name().await.unwrap()
 }
@@ -36,9 +35,10 @@ pub enum QueryError {
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
 struct Summoner {
-    pub accountId: u32,
-    pub displayName: String,
+    pub account_id: u32,
+    pub display_name: String,
 }
 
 struct NewGameClient {
@@ -48,11 +48,15 @@ struct NewGameClient {
 }
 
 impl NewGameClient {
-    pub fn new(port: u32, password: String) -> Self {
+    pub fn new() -> Self {
+        let lockfile = LeagueClientConnector::parse_lockfile().unwrap();
         NewGameClient {
-            client: reqwest::ClientBuilder::new().build().unwrap(),
-            port: port,
-            password: password,
+            client: reqwest::ClientBuilder::new()
+                .danger_accept_invalid_certs(true)
+                .build()
+                .unwrap(),
+            port: lockfile.port,
+            password: lockfile.password,
         }
     }
 
@@ -63,7 +67,7 @@ impl NewGameClient {
         let data = self
             .client
             .get(String::from("https://localhost:") + &self.port.to_string() + "/" + &endpoint)
-            .basic_auth("riot", Some(self.password))
+            .basic_auth("riot", Some(&self.password))
             .send()
             .await?
             .json::<T>()
@@ -73,8 +77,11 @@ impl NewGameClient {
 
     pub async fn summoner_name(&self) -> Result<String, QueryError> {
         let base_endpoint = String::from("lol-summoner/v1/current_summoner");
-        let summoner = self.get_data::<Summoner, _>(base_endpoint).await.unwrap();
+        let summoner = self
+            .get_data::<Summoner, String>(base_endpoint)
+            .await
+            .unwrap();
 
-        Ok(summoner.displayName)
+        Ok(summoner.display_name)
     }
 }
